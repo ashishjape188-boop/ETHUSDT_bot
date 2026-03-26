@@ -6,8 +6,7 @@ import numpy as np
 from datetime import datetime
 import pytz
 
-BOT_TOKEN = "8749089704:AAFq_Xh6_oYk61V4mv8eNVdcX3Yh27AJuuY"
-
+BOT_TOKEN = "8657963512:AAGlGcSSYGLnqy4eSxgdYSa9apdDhi0K5lg"
 CHAT_IDS = [
     "1070509960",
     "1937479700",
