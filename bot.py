@@ -191,49 +191,58 @@ def generate_signals(df):
 
 def generate_fake_signals(df):
     """
-    Identifies 'Fake' trade setups where momentum (CCI) was bullish/bearish 
-    for 3 candles while price stayed on the wrong side of EMA7, 
-    plus a minimum 2-unit distance check on the breakout candle.
+    1. Identifies 'Fake' setups (Momentum vs Price divergence).
+    2. After 3 candles, confirms if the trend persisted.
     """
     df["Fake Signal"] = "No Trade"
-
-    # Start from index 3 to allow for 3 lookback candles (i-1, i-2, i-3)
-    for i in range(3, len(df)):
-        # Current Candle
+    
+    # We need a longer range to handle lookback + confirmation window
+    # i-3 for the fake setup, and checking i vs i-3 for confirmation
+    for i in range(6, len(df)):
+        # --- 1. DATA COLLECTION ---
         curr_close = df.loc[i, "Close"]
         curr_ema7  = df.loc[i, "EMA7"]
         curr_cci   = df.loc[i, "CCI_60"]
         curr_cci_e = df.loc[i, "CCI_EMA"]
         
-        # Spread calculation
         price_ema_diff = curr_close - curr_ema7
 
-        # Lookback Window: indices [i-3, i-2, i-1] (Last 3 candles)
+        # --- 2. DETECT INITIAL FAKE SIGNAL (Current Candle i) ---
+        # Lookback Window: indices [i-3, i-2, i-1]
         lookback = df.loc[i-3 : i-1]
 
-        # --- LONG FAKE TRADE CONDITION ---
-        # Lookback: CCI was strong but Price was stuck below EMA7
         long_fake_setup = (
             (lookback["Close"] < lookback["EMA7"]).all() and 
             (lookback["CCI_60"] > lookback["CCI_EMA"]).all()
         )
         
-        # Current: Price breaks above EMA7 by at least 2 units
-        if (curr_close > curr_ema7 and curr_cci > curr_cci_e) and \
-           long_fake_setup and (price_ema_diff >= 2):
-            df.loc[i, "Fake Signal"] = "Long Fake Trade"
-
-        # --- SHORT FAKE TRADE CONDITION ---
-        # Lookback: CCI was weak but Price was stuck above EMA7
         short_fake_setup = (
             (lookback["Close"] > lookback["EMA7"]).all() and 
             (lookback["CCI_60"] < lookback["CCI_EMA"]).all()
         )
 
-        # Current: Price breaks below EMA7 by at least 2 units
-        if (curr_close < curr_ema7 and curr_cci < curr_cci_e) and \
-           short_fake_setup and (price_ema_diff <= -2):
+        # Apply the "Fake" label if conditions met
+        if (curr_close > curr_ema7 and curr_cci > curr_cci_e) and \
+           long_fake_setup and (price_ema_diff >= 2):
+            df.loc[i, "Fake Signal"] = "Long Fake Trade"
+
+        elif (curr_close < curr_ema7 and curr_cci < curr_cci_e) and \
+             short_fake_setup and (price_ema_diff <= -2):
             df.loc[i, "Fake Signal"] = "Short Fake Trade"
+
+        # --- 3. CONFIRMATION LOGIC (Check 3 candles after a Fake Signal) ---
+        # We look back 3 rows to see if THAT row was a Fake Trade
+        past_fake_signal = df.loc[i-4, "Fake Signal"]
+
+        if past_fake_signal == "Long Fake Trade":
+            # Check if 3 candles later, the trend is still bullish
+            if curr_cci > curr_cci_e and curr_close > curr_ema7:
+                df.loc[i, "Fake Signal"] = "Long Trade"  # Note: Writes to your Fake Signal column
+
+        elif past_fake_signal == "Short Fake Trade":
+            # Check if 3 candles later, the trend is still bearish
+            if curr_cci < curr_cci_e and curr_close < curr_ema7:
+                df.loc[i, "Fake Signal"] = "Short Trade"
 
     return df
 
