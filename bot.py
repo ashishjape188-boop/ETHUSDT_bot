@@ -205,7 +205,20 @@ def generate_fake_signals(df):
         curr_cci   = df.loc[i, "CCI_60"]
         curr_cci_e = df.loc[i, "CCI_EMA"]
         
+        prev_signal = df.loc[i-1, "Fake Signal"]
         price_ema_diff = curr_close - curr_ema7
+
+        # --- 1. CONTINUATION LOGIC ---
+        # Maintain existing trades from the main Signal column
+        if prev_signal == "Long Trade":
+            if curr_close > curr_ema7 and curr_cci > curr_cci_e:
+                df.loc[i, "Fake Signal"] = "Long Trade"
+                continue 
+
+        elif prev_signal == "Short Trade":
+            if curr_close < curr_ema7 and curr_cci < curr_cci_e:
+                df.loc[i, "Fake Signal"] = "Short Trade"
+                continue
 
         # --- 2. DETECT INITIAL FAKE SIGNAL (Current Candle i) ---
         # Lookback Window: indices [i-3, i-2, i-1]
