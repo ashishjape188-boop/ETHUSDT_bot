@@ -67,5 +67,3 @@ The bot runs every **30 minutes**, detects **Long**, **Short**, and **Fake signa
   - Telegram Bot API  
 
 ---
-
-# 📂 Project Structure
